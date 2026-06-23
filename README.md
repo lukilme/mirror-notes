@@ -1,4 +1,4 @@
-# Guitar Visualizer — C++ / openFrameworks
+# 🎸 Guitar Visualizer — C++ / openFrameworks
 
 Visualizador gráfico em tempo real que transforma o sinal de guitarra em imagens
 reativas usando áudio → análise → mapeamento → OpenGL.

@@ -32,7 +32,6 @@ static void fft(std::vector<float>& re, std::vector<float>& im) {
     }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
 
 void AudioAnalyzer::setup(int sr, int fSize) {
     sampleRate = sr;

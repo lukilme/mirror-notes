@@ -2,12 +2,10 @@
 #include <cmath>
 #include <algorithm>
 
-// ─── Note name lookup ────────────────────────────────────────────────────────
 static const char* NOTE_NAMES[12] = {
     "C","C#","D","D#","E","F","F#","G","G#","A","A#","B"
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 void ofApp::setup() {
     ofSetWindowTitle("Guitar Visualizer");
     ofSetFrameRate(60);
@@ -15,7 +13,6 @@ void ofApp::setup() {
     ofEnableSmoothing();
     ofEnableAlphaBlending();
 
-    // ── Audio setup ──────────────────────────────────────────────────────────
     analyzer.setup(sampleRate, 2048);
     mapper.setup();
     particles.setup(3000);
@@ -29,13 +26,10 @@ void ofApp::setup() {
     ss.setInListener(this);
     soundStream.setup(ss);
 
-    ofLogNotice("GuitarViz") << "Audio stream opened – " << sampleRate
+    ofLogNotice("GuitarViz") << "Audio stream opened - " << sampleRate
                               << " Hz / buffer " << bufferSize;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Audio callback (runs on a separate OS thread)
-// ─────────────────────────────────────────────────────────────────────────────
 void ofApp::audioIn(ofSoundBuffer& buffer) {
     AudioFeatures feat;
     analyzer.process(buffer.getBuffer().data(),
@@ -44,18 +38,15 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
     latestFeatures = feat;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 void ofApp::update() {
     float dt = ofGetLastFrameTime();
 
-    // Grab latest audio data (thread-safe)
     AudioFeatures raw;
     {
         std::lock_guard<std::mutex> lk(audioMutex);
         raw = latestFeatures;
     }
 
-    // ── Smooth all scalar features ────────────────────────────────────────────
     float alpha = std::min(1.f, dt * 8.f);   // ~8 Hz smoothing
     smoothFeatures.rms    = ofLerp(smoothFeatures.rms,    raw.rms,    alpha);
     smoothFeatures.bass   = ofLerp(smoothFeatures.bass,   raw.bass,   alpha);
@@ -66,7 +57,6 @@ void ofApp::update() {
     smoothFeatures.onsetFlag  = raw.onsetFlag;     // pass through
     smoothFeatures.spectrum   = raw.spectrum;      // pointer swap is fast
 
-    // ── Particles ─────────────────────────────────────────────────────────────
     particles.update(dt);
 }
 
@@ -76,7 +66,6 @@ void ofApp::draw() {
     float cx = W * 0.5f, cy = H * 0.5f;
     float dt = ofGetLastFrameTime();
 
-    // ── Map to visual params ─────────────────────────────────────────────────
     AudioFeatures raw;
     {
         std::lock_guard<std::mutex> lk(audioMutex);
@@ -84,11 +73,9 @@ void ofApp::draw() {
     }
     VisualParams vp = mapper.map(smoothFeatures, raw);
 
-    // ── 1. Background fade ───────────────────────────────────────────────────
     ofSetColor(0, 0, 0, 220);
     ofDrawRectangle(0, 0, W, H);
 
-    // ── 2. Bass wave (bottom half) ────────────────────────────────────────────
     {
         ofPolyline wave;
         int steps = 200;
@@ -106,7 +93,6 @@ void ofApp::draw() {
         wave.draw();
     }
 
-    // ── 3. Spectrum bars ──────────────────────────────────────────────────────
     if (!vp.bars.empty()) {
         int   nBars  = (int)vp.bars.size();
         float barW   = W / float(nBars);
@@ -121,20 +107,16 @@ void ofApp::draw() {
         }
     }
 
-    // ── 4. Core pulsing circle ────────────────────────────────────────────────
     {
-        // Outer glow layers
         for (int g = 5; g >= 1; --g) {
             float r   = vp.coreRadius + g * 20.f;
             int   al  = int(40.f / g);
             ofSetColor(vp.primaryColor, al);
             ofDrawCircle(cx, cy, r);
         }
-        // Solid core
         ofSetColor(vp.primaryColor, 220);
         ofDrawCircle(cx, cy, vp.coreRadius);
 
-        // Inner highlight
         ofColor hi = vp.primaryColor;
         hi.setBrightness(255); hi.setSaturation(100);
         ofSetColor(hi, 160);
@@ -142,14 +124,12 @@ void ofApp::draw() {
                      vp.coreRadius * 0.3f);
     }
 
-    // ── 5. Treble sparkles ────────────────────────────────────────────────────
     if (smoothFeatures.treble > 0.05f) {
         ofColor sparkCol = vp.primaryColor;
         sparkCol.setBrightness(255);
         particles.sparkle(cx, H * 0.15f, sparkCol, smoothFeatures.treble);
     }
 
-    // ── 6. Onset burst ────────────────────────────────────────────────────────
     if (vp.onset) {
         particles.burst(cx, cy, vp.primaryColor, 1.f, 80);
         // Instant flash
@@ -157,10 +137,8 @@ void ofApp::draw() {
         ofDrawRectangle(0, 0, W, H);
     }
 
-    // ── 7. Particle layer ─────────────────────────────────────────────────────
     particles.draw();
 
-    // ── 8. UI overlay ─────────────────────────────────────────────────────────
     if (showUI) drawUI();
 }
 
@@ -172,7 +150,6 @@ void ofApp::drawUI() {
     ofDrawBitmapString("Guitar Visualizer  |  F1=UI  F2=Debug  ESC=Quit",
                        10, 20);
 
-    // ── Meters ────────────────────────────────────────────────────────────────
     auto meter = [&](const std::string& label, float val, float y) {
         ofSetColor(80);
         ofDrawRectangle(10, y, 150, 8);
@@ -186,7 +163,6 @@ void ofApp::drawUI() {
     meter("Mid   ", smoothFeatures.mid,    H - 52);
     meter("Treble", smoothFeatures.treble, H - 38);
 
-    // ── Note display ─────────────────────────────────────────────────────────
     if (smoothFeatures.noteIndex >= 0) {
         ofSetColor(255, 255, 100);
         std::string noteName = NOTE_NAMES[smoothFeatures.noteIndex];
@@ -202,7 +178,6 @@ void ofApp::drawUI() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 void ofApp::keyPressed(int key) {
     if (key == OF_KEY_F1)  showUI    = !showUI;
     if (key == OF_KEY_F2)  showDebug = !showDebug;
@@ -213,7 +188,6 @@ void ofApp::keyPressed(int key) {
     if (key == '-') mapper.sensitivityRMS    = std::max(0.2f, mapper.sensitivityRMS - 0.1f);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 void ofApp::exit() {
     soundStream.close();
 }

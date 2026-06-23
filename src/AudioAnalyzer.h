@@ -18,15 +18,12 @@ struct AudioFeatures {
     std::vector<float> spectrum; // full FFT magnitude bins (normalized)
 };
 
-// ─────────────────────────────────────────────
-//  AudioAnalyzer – runs inside the audio callback
-// ─────────────────────────────────────────────
+
 class AudioAnalyzer {
 public:
-    // Call once before stream starts
-    void setup(int sampleRate, int fftSize = 2048);
 
-    // Called from ofApp::audioIn() – fills `out`
+void setup(int sampleRate, int fftSize = 2048);
+
     void process(const float* samples, int numSamples, AudioFeatures& out);
 
 private:

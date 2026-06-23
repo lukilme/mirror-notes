@@ -3,28 +3,22 @@
 #include "ofMain.h"
 #include "AudioAnalyzer.h"
 
-// ─── Per-frame visual parameters ────────────────────────────────────────────
 struct VisualParams {
-    // Color
     ofColor primaryColor;      // note-driven hue
     ofColor bassColor;         // warm/cold bass tint
     float   bgBrightness;      // 0..1  background darkness
 
-    // Geometry
     float   coreRadius;        // central pulsing circle radius
     float   waveAmplitude;     // bass wave height
     float   particleBurst;     // 0..1 onset burst intensity
     float   trebleGlow;        // treble highlight glow radius
 
-    // Spectrum bars (ready to draw)
     std::vector<float> bars;   // normalized heights for spectrum display
 
-    // Metadata
     int     noteIndex;         // -1 or 0..11
     bool    onset;
 };
 
-// ─── Mapping table: one color per note ──────────────────────────────────────
 static const ofColor NOTE_COLORS[12] = {
     ofColor(220,  50,  50),  // C  – red
     ofColor(220,  90,  50),  // C# – red-orange
@@ -40,17 +34,12 @@ static const ofColor NOTE_COLORS[12] = {
     ofColor(220,  50, 130),  // B  – pink
 };
 
-// ────────────────────────────────────────────────────────────────────────────
-
 class VisualMapper {
 public:
     void setup();
 
-    // Transform AudioFeatures → VisualParams
-    // `smooth` is the time-smoothed version; `raw` carries the onset flag
     VisualParams map(const AudioFeatures& smooth, const AudioFeatures& raw);
 
-    // Public tuning knobs (can be hooked to UI sliders)
     float sensitivityRMS    = 1.2f;
     float sensitivityBass   = 1.5f;
     float sensitivityTreble = 1.8f;

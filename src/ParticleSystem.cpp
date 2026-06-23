@@ -14,7 +14,7 @@ void ParticleSystem::update(float dt) {
         if (p.life < 0.f) { p.life = 0.f; continue; }
 
         // Gravity + drag
-        p.vel.y   += 60.f * dt;   // gentle gravity
+        p.vel.y   += 60.f * dt;
         p.vel     *= (1.f - 2.f * dt);
         p.pos     += p.vel * dt;
     }
