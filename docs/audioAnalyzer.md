@@ -112,7 +112,7 @@ $$
 \text{midi} = 69 + 12 \cdot \log_2\left(\frac{f}{440}\right)
 $$
 
-O índice cromático da nota dentro da oitava padrão ($0 = \text{Dó}$, $1 = \text{Dó\#}$, ..., $9 = \text{Lá}$, ..., $11 = \text{Si}$) é extraído através do operador módulo aritmético:
+O índice cromático da nota dentro da oitava padrão ($0 = \text{Dó}$,$1=\text{Dó\#}$, ..., $9 = \text{Lá}$, ..., $11 = \text{Si}$) é extraído através do operador módulo aritmético:
 
 $$
 \text{noteIdx} = \lfloor \text{midi} + 0.5 \rfloor \pmod{12}
