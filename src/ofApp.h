@@ -16,11 +16,22 @@ public:
 
     void keyPressed(int key) override;
     void drawUI();
+    void refreshCameraList();
+    bool openSelectedCamera();
+    void selectCamera(int delta);
 
 private:
     // --- Audio ---
     ofSoundStream   soundStream;
     AudioAnalyzer   analyzer;
+
+    // --- Camera ---
+    ofVideoGrabber camera;
+    ofImage        cameraMask;
+    ofPixels       cameraMaskPixels;
+    std::vector<ofVideoDevice> cameraDevices;
+    int selectedCameraIndex = 0;
+    bool showCamera = true;
 
     // --- Visuals ---
     VisualMapper    mapper;

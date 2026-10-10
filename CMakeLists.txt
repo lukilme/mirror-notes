@@ -57,14 +57,23 @@ set(SOURCES
 
 add_executable(GuitarVisualizer ${SOURCES})
 
+target_link_directories(GuitarVisualizer PRIVATE
+    ${OF_ROOT}/libs/openFrameworksCompiled/lib/linux64
+    ${OF_ROOT}/libs/tess2/lib/linux64
+    ${OF_ROOT}/libs/kissfft/lib/linux64
+    ${OF_ROOT}/libs/FreeImage/lib/linux64
+    /usr/lib
+)
+
 # ─── openFrameworks static library ────────────────────────────────────────────
 target_link_libraries(GuitarVisualizer
     PRIVATE
+
     ${OF_ROOT}/libs/openFrameworksCompiled/lib/linux64/libopenFrameworks.a
     ${OF_ROOT}/libs/tess2/lib/linux64/libtess2.a
+    ${OF_ROOT}/libs/kiss/lib/linux64/libkiss.a
 
     freeimage
-    kissfft-float
 
     ${FREETYPE_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
@@ -103,7 +112,6 @@ target_link_libraries(GuitarVisualizer
     pthread
     dl
 )
-
 # ─── Compiler flags ───────────────────────────────────────────────────────────
 target_compile_options(GuitarVisualizer PRIVATE
     -O2 -Wall -Wextra -Wno-unused-parameter

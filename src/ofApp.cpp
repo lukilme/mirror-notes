@@ -6,6 +6,68 @@ static const char* NOTE_NAMES[12] = {
     "C","C#","D","D#","E","F","F#","G","G#","A","A#","B"
 };
 
+void ofApp::refreshCameraList() {
+    cameraDevices = camera.listDevices();
+    if (!cameraDevices.empty()) {
+        selectedCameraIndex = std::clamp(selectedCameraIndex, 0, (int)cameraDevices.size() - 1);
+    }
+}
+
+bool ofApp::openSelectedCamera() {
+    if (camera.isInitialized()) {
+        camera.close();
+    }
+
+    if (cameraDevices.empty()) {
+        showCamera = false;
+        return false;
+    }
+
+    const int totalDevices = (int)cameraDevices.size();
+    const int preferredIndex = std::clamp(selectedCameraIndex, 0, totalDevices - 1);
+
+    for (int offset = 0; offset < totalDevices; ++offset) {
+        const int candidateIndex = (preferredIndex + offset) % totalDevices;
+        const std::string candidateName = cameraDevices[candidateIndex].deviceName;
+
+        camera.setDeviceID(candidateIndex);
+        camera.setDesiredFrameRate(30);
+        camera.setPixelFormat(OF_PIXELS_RGB);
+        camera.setup(640, 480);
+
+        if (!camera.isInitialized()) {
+            ofLogWarning("GuitarViz") << "Camera candidate " << candidateIndex
+                                     << " (" << candidateName << ") failed to initialize; trying next device.";
+            continue;
+        }
+
+        selectedCameraIndex = candidateIndex;
+        cameraMask.allocate(640, 480, OF_IMAGE_COLOR_ALPHA);
+        cameraMaskPixels.allocate(640, 480, OF_PIXELS_RGBA);
+        ofLogNotice("GuitarViz") << "Camera opened on device " << candidateIndex
+                                 << " (" << candidateName << ").";
+        return true;
+    }
+
+    ofLogWarning("GuitarViz") << "No camera device initialized successfully; continuing without webcam input.";
+    showCamera = false;
+    return false;
+}
+
+void ofApp::selectCamera(int delta) {
+    if (cameraDevices.empty()) {
+        refreshCameraList();
+    }
+    if (cameraDevices.empty()) {
+        return;
+    }
+
+    selectedCameraIndex = (selectedCameraIndex + delta + (int)cameraDevices.size()) % (int)cameraDevices.size();
+    if (showCamera) {
+        openSelectedCamera();
+    }
+}
+
 void ofApp::setup() {
     ofSetWindowTitle("Guitar Visualizer");
     ofSetFrameRate(60);
@@ -16,6 +78,14 @@ void ofApp::setup() {
     analyzer.setup(sampleRate, 2048);
     mapper.setup();
     particles.setup(3000);
+
+    refreshCameraList();
+    if (!cameraDevices.empty()) {
+        showCamera = openSelectedCamera();
+    } else {
+        showCamera = false;
+        ofLogWarning("GuitarViz") << "No camera devices detected.";
+    }
 
     ofSoundStreamSettings ss;
     ss.numInputChannels  = numChannels;
@@ -40,6 +110,32 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
 
 void ofApp::update() {
     float dt = ofGetLastFrameTime();
+
+    if (showCamera && camera.isInitialized()) {
+        camera.update();
+        if (camera.isFrameNew()) {
+            const ofPixels& src = camera.getPixels();
+            const size_t w = src.getWidth();
+            const size_t h = src.getHeight();
+            if (cameraMaskPixels.getWidth() != w || cameraMaskPixels.getHeight() != h) {
+                cameraMaskPixels.allocate(static_cast<int>(w), static_cast<int>(h), OF_PIXELS_RGBA);
+                cameraMask.allocate(static_cast<int>(w), static_cast<int>(h), OF_IMAGE_COLOR_ALPHA);
+            }
+
+            for (size_t y = 0; y < h; ++y) {
+                for (size_t x = 0; x < w; ++x) {
+                    ofColor c = src.getColor(static_cast<int>(x), static_cast<int>(y));
+                    float dominant = std::max(float(c.r), float(c.b));
+                    float diff = std::max(0.f, float(c.g) - dominant);
+                    bool isGreen = c.g > 80.f && diff > 30.f;
+                    ofColor out(c.r, c.g, c.b, isGreen ? 0 : 255);
+                    cameraMaskPixels.setColor(static_cast<int>(x), static_cast<int>(y), out);
+                }
+            }
+
+            cameraMask.setFromPixels(cameraMaskPixels);
+        }
+    }
 
     AudioFeatures raw;
     {
@@ -75,6 +171,11 @@ void ofApp::draw() {
 
     ofSetColor(0, 0, 0, 220);
     ofDrawRectangle(0, 0, W, H);
+
+    if (showCamera && camera.isInitialized()) {
+        ofSetColor(255, 255, 255, 120 + smoothFeatures.treble * 120.f);
+        cameraMask.draw(0, 0, W, H);
+    }
 
     {
         ofPolyline wave;
@@ -147,8 +248,23 @@ void ofApp::drawUI() {
     float W = ofGetWidth(), H = ofGetHeight();
 
     ofSetColor(255, 200);
-    ofDrawBitmapString("Guitar Visualizer  |  F1=UI  F2=Debug  ESC=Quit",
+    ofDrawBitmapString("Guitar Visualizer  |  F1=UI  F2=Debug  C=Camera  [ / ] = Camera  ESC=Quit",
                        10, 20);
+
+    if (!cameraDevices.empty()) {
+        ofSetColor(255, 240, 120);
+        ofDrawBitmapString("Cameras:", 10, 38);
+        int maxEntries = std::min<int>((int)cameraDevices.size(), 4);
+        for (int i = 0; i < maxEntries; ++i) {
+            std::string label = std::to_string(i) + ": " + cameraDevices[i].deviceName;
+            if (i == selectedCameraIndex) {
+                ofSetColor(255, 255, 100);
+            } else {
+                ofSetColor(200, 200, 200, 180);
+            }
+            ofDrawBitmapString(label, 10, 54 + i * 16);
+        }
+    }
 
     auto meter = [&](const std::string& label, float val, float y) {
         ofSetColor(80);
@@ -181,6 +297,32 @@ void ofApp::drawUI() {
 void ofApp::keyPressed(int key) {
     if (key == OF_KEY_F1)  showUI    = !showUI;
     if (key == OF_KEY_F2)  showDebug = !showDebug;
+    if (key == OF_KEY_LEFT || key == '[') {
+        selectCamera(-1);
+    }
+    if (key == OF_KEY_RIGHT || key == ']') {
+        selectCamera(1);
+    }
+    if (key >= '1' && key <= '9') {
+        int idx = key - '1';
+        if (idx < (int)cameraDevices.size()) {
+            selectedCameraIndex = idx;
+            if (showCamera) {
+                openSelectedCamera();
+            }
+        }
+    }
+    if (key == 'c' || key == 'C') {
+        showCamera = !showCamera;
+        if (showCamera) {
+            refreshCameraList();
+            if (!cameraDevices.empty()) {
+                openSelectedCamera();
+            }
+        } else {
+            camera.close();
+        }
+    }
     if (key == OF_KEY_ESC) ofExit();
 
     // Sensitivity hot-keys
@@ -189,5 +331,8 @@ void ofApp::keyPressed(int key) {
 }
 
 void ofApp::exit() {
+    if (camera.isInitialized()) {
+        camera.close();
+    }
     soundStream.close();
 }
