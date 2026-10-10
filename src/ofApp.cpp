@@ -69,6 +69,10 @@ void ofApp::selectCamera(int delta) {
 }
 
 void ofApp::setup() {
+    Logger::info("Inicializando Guitar Visualizer");
+    Logger::debug("Modo de depuração ativado");
+    Logger::warning("Nenhuma câmera detectada ainda");
+
     ofSetWindowTitle("Guitar Visualizer");
     ofSetFrameRate(60);
     ofBackground(0);

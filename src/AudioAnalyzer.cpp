@@ -4,6 +4,8 @@
 #include <algorithm>
 
 // ─── Simple Cooley–Tukey FFT (in-place, power-of-two) ───────────────────────
+// decompõe uma combinação de sinais de valores discretos em uma curva sinoidal de frequência e amplitude.
+// 
 static void fft(std::vector<float>& re, std::vector<float>& im) {
     int n = (int)re.size();
     // Bit-reversal permutation
@@ -14,6 +16,8 @@ static void fft(std::vector<float>& re, std::vector<float>& im) {
         if (i < j) { std::swap(re[i], re[j]); std::swap(im[i], im[j]); }
     }
     // FFT butterfly
+    // unidade básica de processamento do algoritmo FFT, que 
+    // combina pares de pontos de dados para calcular a transformada rápida de Fourier.
     for (int len = 2; len <= n; len <<= 1) {
         float angle = -2.f * float(M_PI) / len;
         float wRe = std::cos(angle), wIm = std::sin(angle);

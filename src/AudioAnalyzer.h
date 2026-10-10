@@ -4,9 +4,7 @@
 #include <vector>
 #include <array>
 
-// ─────────────────────────────────────────────
-//  Plain data struct shared between threads
-// ─────────────────────────────────────────────
+
 struct AudioFeatures {
     float rms          = 0.f;   // overall loudness  [0..1]
     float bass         = 0.f;   // low-freq energy   [0..1]

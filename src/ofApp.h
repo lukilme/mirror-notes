@@ -4,6 +4,7 @@
 #include "AudioAnalyzer.h"
 #include "VisualMapper.h"
 #include "ParticleSystem.h"
+#include "Logger.h"
 
 class ofApp : public ofBaseApp {
 public:
